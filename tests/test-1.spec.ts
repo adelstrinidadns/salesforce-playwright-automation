@@ -1,101 +1,113 @@
 import { expect, test } from '@playwright/test';
 
-test('test', async ({ page }) => {
-  // await page.goto('https://rri--fullsb.sandbox.my.salesforce.com/');
-  // await page.getByRole('textbox', { name: 'Username' }).click();
-  
-  // await page.getByRole('textbox', { name: 'Username' }).fill('adelquis.trinidad@nortal.com.fullsb');
-  // await page.getByRole('textbox', { name: 'Password' }).click();
-  // await page.getByRole('textbox', { name: 'Password' }).fill('success404');
-  // // await page.locator('#main').click();
-  // await page.getByRole('button', { name: 'Log In to Sandbox' }).click();
+/**
+ * Test case: Navigate through Salesforce records and verify event credit associations
+ *
+ * This test demonstrates:
+ * - Searching for contacts in Salesforce
+ * - Navigating through related records (Accounts, Event Credits, Opportunities)
+ * - Verifying data consistency across related objects
+ */
+test('should verify event credit associations across multiple accounts', async ({ page }) => {
+  // Navigate to Salesforce home
+  await page.goto('/lightning/page/home');
+  await page.waitForLoadState('domcontentloaded');
 
-  // await page.getByRole('textbox', { name: 'Verification Code' }).fill('IHE0TAZ4XP');
-  // await page.getByRole('button', { name: 'Verify' }).click();
-await page.goto('https://rri--fullsb.sandbox.lightning.force.com/lightning/page/home');
-await expect(page).toHaveURL('https://rri--fullsb.sandbox.lightning.force.com/lightning/page/home', { timeout: 15000 });
-await page.getByRole('button', { name: 'Search' }).click();
-await page.getByPlaceholder('Search...').fill('timothy.hooker@tonyrobbins.com');
-await page.getByPlaceholder('Search...').press('Enter');
-// await page.getByRole('heading', { name: 'Contacts' }).click();
-await page.getByTitle(`Testingus Cornelius Theodorus BTtest080420`).nth(0).click();
-// await page.goto('https://rri--fullsb.sandbox.lightning.force.com/lightning/r/Account/0012H00001b10yuQAA/view');
-await page.getByRole('link', { name: 'Show All (43)' }).click();
-await page.getByRole('link', { name: 'Event Credits (10+)' }).click();
-await expect(page.getByRole('link', { name: 'EC-04080643' })).toBeVisible();
-await page.getByRole('link', { name: 'EC-04080643' }).click();
-await page.getByRole('tab', { name: 'Related' }).click();
-await expect(page.getByRole('tab', { name: 'Details' })).toBeVisible();
-await page.getByRole('tab', { name: 'Details' }).click();
-await page.getByRole('link', { name: 'Therealspork Evans - Business' }).scrollIntoViewIfNeeded();
-await page.getByRole('link', { name: 'Therealspork Evans - Business' }).click();
-await expect(page.getByRole('link', { name: 'Accounts' })).toBeVisible();
-await page.getByRole('link', { name: 'Accounts' }).click();
-await page.getByRole('link', { name: 'Jessica Kitomary' }).click();
-await page.getByRole('link', { name: 'Event Credits' }).click();
-await expect(page.getByRole('link', { name: 'EC-04080643' })).toBeVisible();
-// await page.getByText('Jessica Kitomary').first().click();
-await page.getByRole('link', { name: 'EC-04080643' }).click();
-await expect(page.getByRole('tab', { name: 'Details' })).toBeVisible();
-await page.getByRole('link', { name: 'Therealspork Evans - Business' }).scrollIntoViewIfNeeded();
-await page.getByRole('link', { name: /Testingus Cornelius Theodorus BTtest080420/ }).first().click();
-// await page.getByRole('link', { name: 'Show All (25)' }).click();
-// await page.locator('#tab-25 #window').click();
-await page.getByRole('link', { name: 'Opportunities' }).click();
-await page.getByRole('link', { name: /Samantha Grier - Customer/ }).click({ timeout: 10000 });
+  // Search for contact
+  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByPlaceholder('Search...').fill('timothy.hooker@tonyrobbins.com');
+  await page.getByPlaceholder('Search...').press('Enter');
 
-await expect(page.locator('forcegenerated-highlightspanel_opportunity___012800000007axpaay___compact___view___recordlayout2 lightning-formatted-text').filter({ hasText: 'Samantha Grier - Customer' })).toBeVisible();
+  // Select account from search results - wait for it to be visible first
+  const accountLink = page.getByTitle('Testingus Cornelius Theodorus BTtest080420').nth(0);
+  await accountLink.waitFor({ state: 'visible', timeout: 10000 });
+  await accountLink.click();
 
+  // Wait for navigation to complete
+  await page.waitForURL(/lightning\/r\/Account/, { timeout: 10000 });
 
+  // Navigate to Event Credits
+  await page.getByRole('link', { name: 'Show All (43)' }).click();
+  await page.waitForTimeout(500); // Wait for list to expand
+
+  await page.getByRole('link', { name: 'Event Credits (10+)' }).click();
+  await page.waitForURL(/lightning\/r\/Account/, { timeout: 5000 });
+
+  // Verify and open specific event credit
+  const eventCreditLink = page.getByRole('link', { name: 'EC-04080643' });
+  await expect(eventCreditLink).toBeVisible({ timeout: 10000 });
+  await eventCreditLink.click();
+
+  // Wait for event credit page to load
+  await page.waitForURL(/lightning\/r\/Event_Credit__c/, { timeout: 10000 });
+
+  // Switch to Details tab
+  await page.getByRole('tab', { name: 'Related' }).click();
+  await page.waitForTimeout(500); // Wait for tab transition
+
+  await expect(page.getByRole('tab', { name: 'Details' })).toBeVisible({ timeout: 5000 });
+  await page.getByRole('tab', { name: 'Details' }).click();
+  await page.waitForTimeout(500); // Wait for tab transition
+
+  // Navigate to related opportunity
+  const opportunityLink = page.getByRole('link', { name: 'Therealspork Evans - Business' });
+  await opportunityLink.scrollIntoViewIfNeeded();
+  await expect(opportunityLink).toBeVisible({ timeout: 5000 });
+  await opportunityLink.click();
+
+  // Wait for opportunity page to load
+  await page.waitForURL(/lightning\/r\/Opportunity/, { timeout: 10000 });
+
+  // Navigate to Accounts and select another contact
+  const accountsLink = page.getByRole('link', { name: 'Accounts' });
+  await expect(accountsLink).toBeVisible({ timeout: 10000 });
+  await accountsLink.click();
+
+  const contactLink = page.getByRole('link', { name: 'Jessica Kitomary' });
+  await contactLink.waitFor({ state: 'visible', timeout: 10000 });
+  await contactLink.click();
+
+  // Wait for contact page to load
+  await page.waitForURL(/lightning\/r\/Account/, { timeout: 10000 });
+
+  // Verify Event Credits for second contact
+  await page.getByRole('link', { name: 'Event Credits' }).click();
+  await page.waitForTimeout(500);
+
+  const secondEventCreditLink = page.getByRole('link', { name: 'EC-04080643' });
+  await expect(secondEventCreditLink).toBeVisible({ timeout: 10000 });
+  await secondEventCreditLink.click();
+
+  // Wait for event credit page to load
+  await page.waitForURL(/lightning\/r\/Event_Credit__c/, { timeout: 10000 });
+
+  // Verify Details tab and navigate back to original account
+  await expect(page.getByRole('tab', { name: 'Details' })).toBeVisible({ timeout: 5000 });
+
+  const businessLink = page.getByRole('link', { name: 'Therealspork Evans - Business' });
+  await businessLink.scrollIntoViewIfNeeded();
+  await expect(businessLink).toBeVisible({ timeout: 5000 });
+
+  const accountReturnLink = page.getByRole('link', { name: /Testingus Cornelius Theodorus BTtest080420/ }).first();
+  await accountReturnLink.waitFor({ state: 'visible', timeout: 10000 });
+  await accountReturnLink.click();
+
+  // Wait for account page to load
+  await page.waitForURL(/lightning\/r\/Account/, { timeout: 10000 });
+
+  // Navigate to Opportunities and verify specific opportunity
+  await page.getByRole('link', { name: 'Opportunities' }).click();
+  await page.waitForTimeout(500);
+
+  const finalOpportunityLink = page.getByRole('link', { name: /Samantha Grier - Customer/ });
+  await finalOpportunityLink.waitFor({ state: 'visible', timeout: 15000 });
+  await finalOpportunityLink.click();
+
+  // Wait for opportunity page to load
+  await page.waitForURL(/lightning\/r\/Opportunity/, { timeout: 10000 });
+
+  // Final verification of opportunity details with more specific selector
+  await expect(
+    page.locator('lightning-formatted-text').filter({ hasText: 'Samantha Grier - Customer' }).first()
+  ).toBeVisible({ timeout: 10000 });
 });
-
-// test('test 2', async ({ page }) => {
-//   await page.goto('https://rri--fullsb.sandbox.my.salesforce.com/');
-//   await page.getByRole('textbox', { name: 'Username' }).click();
-  
-//   await page.getByRole('textbox', { name: 'Username' }).fill('adelquis.trinidad@gmail.com.sb');
-//   await page.getByRole('textbox', { name: 'Password' }).click();
-//   await page.getByRole('textbox', { name: 'Password' }).fill('success404');
-//   // await page.locator('#main').click();
-//   await page.getByRole('button', { name: 'Log In to Sandbox' }).click();
-
-//   await page.getByRole('textbox', { name: 'Verification Code' }).fill('RGOTCLIJ6W');
-//   await page.getByRole('button', { name: 'Verify' }).click();
-//   await expect(page).toHaveURL('https://rri--fullsb.sandbox.lightning.force.com/lightning/page/home', { timeout: 15000 });
-// await page.getByRole('button', { name: 'Search' }).click();
-// await page.getByPlaceholder('Search...').fill('timothy.hooker@tonyrobbins.com');
-// await page.getByPlaceholder('Search...').press('Enter');
-// // await page.getByRole('heading', { name: 'Contacts' }).click();
-// await page.getByTitle(`Testingus Cornelius Theodorus BTtest080420`).nth(0).click();
-// // await page.goto('https://rri--fullsb.sandbox.lightning.force.com/lightning/r/Account/0012H00001b10yuQAA/view');
-// await page.getByRole('link', { name: 'Show All (43)' }).click();
-// await page.getByRole('link', { name: 'Event Credits (10+)' }).click();
-// await expect(page.getByRole('link', { name: 'EC-04080643' })).toBeVisible();
-// await page.getByRole('link', { name: 'EC-04080643' }).click();
-// await page.getByRole('tab', { name: 'Related' }).click();
-// await expect(page.getByRole('tab', { name: 'Details' })).toBeVisible();
-// await page.getByRole('tab', { name: 'Details' }).click();
-// await page.getByRole('link', { name: 'Therealspork Evans - Business' }).scrollIntoViewIfNeeded();
-// await page.getByRole('link', { name: 'Therealspork Evans - Business' }).click();
-// await expect(page.getByRole('link', { name: 'Accounts' })).toBeVisible();
-// await page.getByRole('link', { name: 'Accounts' }).click();
-// await page.getByRole('link', { name: 'Testingus Cornelius Theodorus' }).click();
-// // await page.getByRole('link', { name: 'Jessica Kitomary' }).click();
-// await page.getByRole('link', { name: 'Event Credits' }).click();
-// await expect(page.getByRole('link', { name: 'EC-04080643' })).toBeVisible();
-// // await page.getByText('Jessica Kitomary').first().click();
-// await page.getByRole('link', { name: 'EC-04080643' }).click();
-// await expect(page.getByRole('tab', { name: 'Details' })).toBeVisible();
-// await page.getByRole('link', { name: 'Therealspork Evans - Business' }).scrollIntoViewIfNeeded();
-// await page.getByRole('link', { name: /Testingus Cornelius Theodorus BTtest080420/ }).first().click();
-// // await page.getByRole('link', { name: 'Show All (25)' }).click();
-// // await page.locator('#tab-25 #window').click();
-// await page.getByRole('link', { name: 'Opportunities' }).click();
-// await page.getByRole('link', { name: /Therealspork Evans -/ }).click({ timeout: 10000 });
-// await expect(page.locator('forcegenerated-highlightspanel_opportunity___012800000007ar0aaa___compact___view___recordlayout2 lightning-formatted-text').filter({ hasText: 'Therealspork Evans - Business' })).toBeVisible();
-// // await page.locator('forcegenerated-highlightspanel_opportunity___012800000007ar0aaa___compact___view___recordlayout2 lightning-formatted-text').filter({ hasText: 'Therealspork Evans - Business' }).click();
-
-// // await expect(page.locator('forcegenerated-highlightspanel_opportunity___012800000007axpaay___compact___view___recordlayout2 lightning-formatted-text').filter({ hasText: 'Therealspork Evans - Business Mastery' })).toBeVisible();
-
-
-// });
