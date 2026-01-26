@@ -89,7 +89,7 @@ async function performLogin(page: any): Promise<void> {
   // Handle verification code
   if (verificationCode) {
     console.log('🔐 Using verification code from environment variable...');
-    // await page.getByRole('textbox', { name: 'Verification Code' }).fill(verificationCode);
+    await page.getByRole('textbox', { name: 'Verification Code' }).fill(verificationCode);
     await page.getByRole('button', { name: 'Verify' }).click();
   } else {
     console.log('⏸️  PLEASE ENTER VERIFICATION CODE IN BROWSER (you have 2 minutes)...');
