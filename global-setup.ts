@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+
 import { FullConfig, chromium } from '@playwright/test';
 
 // Configuration constants
@@ -43,19 +44,25 @@ function isAuthValid(): boolean {
       return false;
     }
 
-    // Check if cookies are expired
+    // Check if important authentication cookies are expired
+    // Ignore short-lived tracking/analytics cookies that expire quickly
     const now = Date.now() / 1000; // Convert to seconds (Unix timestamp)
-    const expiredCookies = authData.cookies.filter((cookie: Cookie) => {
-      return cookie.expires && cookie.expires > 0 && cookie.expires < now;
+    const ONE_DAY = 86400;
+
+    // Only check cookies that have long expiration (> 1 day from now)
+    // These are the actual auth cookies, not tracking/session cookies
+    const authCookies = authData.cookies.filter((cookie: Cookie) => {
+      if (!cookie.expires || cookie.expires <= 0) return false;
+      return cookie.expires > now + ONE_DAY;
     });
 
-    if (expiredCookies.length > 0) {
-      console.log(`⚠️  Found ${expiredCookies.length} expired cookies out of ${authData.cookies.length}`);
+    if (authCookies.length === 0) {
+      console.log('⚠️  No long-lived authentication cookies found');
       console.log('🔄 Authentication expired, will re-authenticate...');
       return false;
     }
 
-    console.log(`✅ Valid authentication found (${authData.cookies.length} cookies, all valid)`);
+    console.log(`✅ Valid authentication found (${authCookies.length} auth cookies valid)`);
     return true;
   } catch (error: any) {
     console.log('⚠️  Auth file is corrupted:', error?.message || 'Unknown error');
@@ -82,7 +89,7 @@ async function performLogin(page: any): Promise<void> {
   // Handle verification code
   if (verificationCode) {
     console.log('🔐 Using verification code from environment variable...');
-    await page.getByRole('textbox', { name: 'Verification Code' }).fill(verificationCode);
+    // await page.getByRole('textbox', { name: 'Verification Code' }).fill(verificationCode);
     await page.getByRole('button', { name: 'Verify' }).click();
   } else {
     console.log('⏸️  PLEASE ENTER VERIFICATION CODE IN BROWSER (you have 2 minutes)...');
