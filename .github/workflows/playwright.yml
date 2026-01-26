@@ -31,7 +31,7 @@ jobs:
           echo '${{ secrets.SALESFORCE_AUTH_STATE }}' > .auth/user.json
 
       - name: Run Playwright tests
-        run: npx playwright test --workers=10 --repeat-each=10
+        run: npx playwright test --workers=5 --repeat-each=5
         env:
           SF_USERNAME: ${{ secrets.SF_USERNAME }}
           SF_PASSWORD: ${{ secrets.SF_PASSWORD }}
