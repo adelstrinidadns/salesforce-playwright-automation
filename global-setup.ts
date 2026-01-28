@@ -44,25 +44,34 @@ function isAuthValid(): boolean {
       return false;
     }
 
-    // Check if important authentication cookies are expired
-    // Ignore short-lived tracking/analytics cookies that expire quickly
-    const now = Date.now() / 1000; // Convert to seconds (Unix timestamp)
-    const ONE_DAY = 86400;
+    // Check for Salesforce session cookies (sid) on the Lightning domain
+    // These are the actual authentication tokens - without them, we're not logged in
+    const lightningDomain = 'rri--fullsb.sandbox.lightning.force.com';
+    const sidCookie = authData.cookies.find(
+      (cookie: Cookie) => cookie.name === 'sid' && cookie.domain === lightningDomain
+    );
 
-    // Only check cookies that have long expiration (> 1 day from now)
-    // These are the actual auth cookies, not tracking/session cookies
-    const authCookies = authData.cookies.filter((cookie: Cookie) => {
+    if (!sidCookie || !sidCookie.value) {
+      console.log('⚠️  No Salesforce session cookie (sid) found for Lightning domain');
+      console.log('🔄 Will re-authenticate...');
+      return false;
+    }
+
+    // Check if long-lived cookies exist (as a secondary validation)
+    const now = Date.now() / 1000;
+    const ONE_DAY = 86400;
+    const longLivedCookies = authData.cookies.filter((cookie: Cookie) => {
       if (!cookie.expires || cookie.expires <= 0) return false;
       return cookie.expires > now + ONE_DAY;
     });
 
-    if (authCookies.length === 0) {
-      console.log('⚠️  No long-lived authentication cookies found');
-      console.log('🔄 Authentication expired, will re-authenticate...');
+    if (longLivedCookies.length === 0) {
+      console.log('⚠️  No long-lived cookies found - session may be stale');
+      console.log('🔄 Will re-authenticate...');
       return false;
     }
 
-    console.log(`✅ Valid authentication found (${authCookies.length} auth cookies valid)`);
+    console.log(`✅ Valid authentication found (sid cookie + ${longLivedCookies.length} long-lived cookies)`);
     return true;
   } catch (error: any) {
     console.log('⚠️  Auth file is corrupted:', error?.message || 'Unknown error');
@@ -89,7 +98,7 @@ async function performLogin(page: any): Promise<void> {
   // Handle verification code
   if (verificationCode) {
     console.log('🔐 Using verification code from environment variable...');
-    await page.getByRole('textbox', { name: 'Verification Code' }).fill(verificationCode);
+    // await page.getByRole('textbox', { name: 'Verification Code' }).fill(verificationCode);
     await page.getByRole('button', { name: 'Verify' }).click();
   } else {
     console.log('⏸️  PLEASE ENTER VERIFICATION CODE IN BROWSER (you have 2 minutes)...');
